@@ -1,4 +1,4 @@
-module github.com/adamkgray/DigitalOceanK8sClientCert
+module github.com/adamkgray/dok8cert
 
 go 1.16
 

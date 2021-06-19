@@ -1,2 +1,3 @@
-# DigitalOceanK8sClientCert
-Handle SSL when connecting to the K8s API on DigitalOcean clusters
+# dok8cert
+
+A wrapper for digital ocean kubernetes client certificate management

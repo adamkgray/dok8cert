@@ -7,9 +7,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"k8s.io/client-go/rest"
 )
 
 var digitalOceanApi string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
+
+func Set(cert []byte, client *rest.Config) {
+	client.TLSClientConfig.CAData = cert
+}
 
 func Get(clusterId string, accessToken string) ([]byte, error) {
 	// call DO credentials Api
