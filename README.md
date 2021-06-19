@@ -37,5 +37,5 @@ if err != nil {
 dok8cert.Set(cert, config)
 
 // continue doing the thing
-clientset, err := kubernetes.NewForConfig(k.Config)
+clientset, err := kubernetes.NewForConfig(config)
 ```
