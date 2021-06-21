@@ -20,7 +20,7 @@ type credentialsApiResponse struct {
 	Expiresat                string `json:"expires_at"`
 }
 
-var digitalOceanApi string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
+var apiEndpoint string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
 
 func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
 	// get json response from credentials api
@@ -49,7 +49,7 @@ func Update(clusterId string, accessToken string, client *rest.Config) (bool, er
 
 func credentialsApi(clusterId string, accessToken string) ([]byte, error) {
 	httpClient := &http.Client{}
-	req, _ := http.NewRequest("GET", fmt.Sprintf(digitalOceanApi, clusterId), nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf(apiEndpoint, clusterId), nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	resp, err := httpClient.Do(req)
