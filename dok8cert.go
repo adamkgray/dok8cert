@@ -58,7 +58,7 @@ func credentialsApi(clusterId string, accessToken string) ([]byte, error) {
 		return []byte{}, errors.New(msg)
 	}
 	if resp.StatusCode != http.StatusOK {
-		msg := "non 2XX response from digitalocean credentials api"
+		msg := fmt.Sprintf("digitalocean credentials api responded with non-2XX HTTP status %d", resp.StatusCode)
 		return []byte{}, errors.New(msg)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
@@ -73,17 +73,17 @@ func unmarshalCredentialsApiResponse(body []byte) (credentialsApiResponse, error
 	data := credentialsApiResponse{}
 	err := json.Unmarshal(body, &data)
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal digitalocean api response json: %s", err)
+		msg := fmt.Sprintf("failed to unmarshal digitalocean credentials api response json: %s", err)
 		return credentialsApiResponse{}, errors.New(msg)
 	}
 	return data, nil
 }
 
-func decodeCert(cert string) ([]byte, error) {
-	certBytes, err := base64.StdEncoding.DecodeString(cert)
+func decodeCert(encodedCert string) ([]byte, error) {
+	decodedCert, err := base64.StdEncoding.DecodeString(encodedCert)
 	if err != nil {
-		msg := fmt.Sprintf("failed to decode cert: %s", err)
+		msg := fmt.Sprintf("failed to decode TLS certificate: %s", err)
 		return []byte{}, errors.New(msg)
 	}
-	return certBytes, nil
+	return decodedCert, nil
 }
