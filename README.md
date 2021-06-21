@@ -1,6 +1,6 @@
 # dok8cert
 
-A wrapper for digital ocean kubernetes client certificate management
+Update the go kubernetes client with the custom DigitalOcean TLS certificate
 
 ## About
 
