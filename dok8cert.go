@@ -24,19 +24,19 @@ var digitalOceanApi string = "https://api.digitalocean.com/v2/kubernetes/cluster
 
 func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
 	// get json response from credentials api
-	resp, err := credentialsApi(clusterId, accessToken)
+	body, err := credentialsApi(clusterId, accessToken)
 	if err != nil {
 		return false, err
 	}
 
 	// unmarshal response
-	data, err := unmarshalCredentialsApiResponse(resp)
+	resp, err := unmarshalCredentialsApiResponse(body)
 	if err != nil {
 		return false, err
 	}
 
 	// decode cert
-	cert, err := decodeCert(data.CertificateAuthorityData)
+	cert, err := decodeCert(resp.CertificateAuthorityData)
 	if err != nil {
 		return false, err
 	}
