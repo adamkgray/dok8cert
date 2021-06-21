@@ -11,64 +11,70 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+type credentialsApiResponse struct {
+	Server                   string `json:"server"`
+	CertificateAuthorityData string `json:"certificate_authority_data"`
+	ClientCertificateData    string `json:"client_certificate_data"`
+	ClientKeyData            string `json:"client_key_data"`
+	Token                    string `json:"token"`
+	Expiresat                string `json:"expires_at"`
+}
+
 var digitalOceanApi string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
 
-func Set(cert []byte, client *rest.Config) {
-	client.TLSClientConfig.CAData = cert
-}
-
-func Get(clusterId string, accessToken string) ([]byte, error) {
-	// call DO credentials Api
+func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
+	// get json response from credentials api
 	resp, err := credentialsApi(clusterId, accessToken)
 	if err != nil {
-		return []byte{}, err
+		return false, err
 	}
 
-	// parse response
-	data, err := parseCredentialsApiResponse(resp)
+	// unmarshal response
+	data, err := unmarshalCredentialsApiResponse(resp)
 	if err != nil {
-		return []byte{}, err
+		return false, err
 	}
 
-	// get certificate as bytes
-	cert, err := decodeCert(data["certificate_authority_data"])
+	// decode cert
+	cert, err := decodeCert(data.CertificateAuthorityData)
 	if err != nil {
-		return []byte{}, err
+		return false, err
 	}
 
-	return []byte(cert), nil
+	// update cert
+	client.TLSClientConfig.CAData = cert
+
+	return true, nil
 }
 
-func credentialsApi(clusterId string, accessToken string) (*http.Response, error) {
+func credentialsApi(clusterId string, accessToken string) ([]byte, error) {
 	httpClient := &http.Client{}
 	req, _ := http.NewRequest("GET", fmt.Sprintf(digitalOceanApi, clusterId), nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		msg := fmt.Sprintf("failed to call digitalocean api: %s", err)
-		return &http.Response{}, errors.New(msg)
+		msg := fmt.Sprintf("failed to call digitalocean credentials api: %s", err)
+		return []byte{}, errors.New(msg)
 	}
 	if resp.StatusCode != http.StatusOK {
-		msg := "non 2XX response from digitalocean api"
-		return &http.Response{}, errors.New(msg)
+		msg := "non 2XX response from digitalocean credentials api"
+		return []byte{}, errors.New(msg)
 	}
-	return resp, nil
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		msg := fmt.Sprintf("failed to read digitalocean credentials api response body: %s", err)
+		return []byte{}, errors.New(msg)
+	}
+	return body, nil
 }
 
-func parseCredentialsApiResponse(resp *http.Response) (map[string]string, error) {
-	// parse response
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		msg := fmt.Sprintf("failed to read digitalocean api response: %s", err)
-		return make(map[string]string), errors.New(msg)
-	}
-	body := string(respBytes)
-	var data map[string]string
-	err = json.Unmarshal([]byte(body), &data)
+func unmarshalCredentialsApiResponse(body []byte) (credentialsApiResponse, error) {
+	data := credentialsApiResponse{}
+	err := json.Unmarshal(body, &data)
 	if err != nil {
 		msg := fmt.Sprintf("failed to unmarshal digitalocean api response json: %s", err)
-		return make(map[string]string), errors.New(msg)
+		return credentialsApiResponse{}, errors.New(msg)
 	}
 	return data, nil
 }

@@ -12,11 +12,7 @@ I have not been able to find the documentation explaining why you must use this 
 
 ## How to use it
 
-This package provides two methods: `Get()` and `Set()`
-
-1. `Get()` takes your cluster id and access token and returns the custom certificate as a slice of bytes
-
-2. `Set()` takes the cert slice and your rest client sets the new cert in the correct place
+This package exposes a single method `Update()`
 
 Example:
 
@@ -27,14 +23,11 @@ if err != nil {
     // ...
 }
 
-// get the cert
-cert, err := dok8cert.Get("clusterId", "accessToken")
+// update the cert
+ok, err := dok8cert.Update("clusterId", "accessToken", config)
 if err != nil {
     // ...
 }
-
-// put the cert in your client
-dok8cert.Set(cert, config)
 
 // continue doing the thing
 clientset, err := kubernetes.NewForConfig(config)
