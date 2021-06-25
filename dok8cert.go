@@ -17,16 +17,23 @@ type credentialsApiResponse struct {
 	ClientCertificateData    string `json:"client_certificate_data"`
 	ClientKeyData            string `json:"client_key_data"`
 	Token                    string `json:"token"`
-	Expiresat                string `json:"expires_at"`
+	ExpiresAt                string `json:"expires_at"`
 	Id                       string `json:"id"`
 	Message                  string `json:"message"`
 }
 
+type networkClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 var apiEndpoint string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
 
+var httpClient *http.Client = &http.Client{}
+
 func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
+
 	// Call the digitalocean credentials api
-	body, err := credentialsApi(clusterId, accessToken)
+	body, err := credentialsApi(httpClient, clusterId, accessToken)
 	if err != nil {
 		return false, err
 	}
@@ -38,14 +45,9 @@ func Update(clusterId string, accessToken string, client *rest.Config) (bool, er
 	}
 
 	// Handle non-OK responses
-	// The digitalocean credentials api will return a non empty string for 'Id' and 'Message' in the case of a non 2XX response
-	if resp.Id != "" {
-		msg := fmt.Sprintf(
-			"digitalocean credentials api response was not 'OK': (%s) %s",
-			resp.Id,
-			resp.Message,
-		)
-		return false, errors.New(msg)
+	ok, err := resp.OK()
+	if !ok {
+		return false, err
 	}
 
 	// Decode the base64-encoded cert
@@ -60,12 +62,15 @@ func Update(clusterId string, accessToken string, client *rest.Config) (bool, er
 	return true, nil
 }
 
-func credentialsApi(clusterId string, accessToken string) ([]byte, error) {
-	httpClient := &http.Client{}
-	req, _ := http.NewRequest("GET", fmt.Sprintf(apiEndpoint, clusterId), nil)
+func credentialsApi(client networkClient, clusterId string, accessToken string) ([]byte, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf(apiEndpoint, clusterId), nil)
+	if err != nil {
+		msg := fmt.Sprintf("failed to instantiate new request: %s", err)
+		return []byte{}, errors.New(msg)
+	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("failed to call digitalocean credentials api: %s", err)
 		return []byte{}, errors.New(msg)
@@ -95,4 +100,17 @@ func decodeCert(encodedCert string) ([]byte, error) {
 		return []byte{}, errors.New(msg)
 	}
 	return decodedCert, nil
+}
+
+// The digitalocean credentials api will return a non empty string for 'Id' and 'Message' in the case of a non-2XX response
+func (resp credentialsApiResponse) OK() (bool, error) {
+	if resp.Id != "" && resp.Message != "" {
+		msg := fmt.Sprintf(
+			"digitalocean credentials api response was not 'OK': (%s) %s",
+			resp.Id,
+			resp.Message,
+		)
+		return false, errors.New(msg)
+	}
+	return true, nil
 }
