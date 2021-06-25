@@ -18,30 +18,43 @@ type credentialsApiResponse struct {
 	ClientKeyData            string `json:"client_key_data"`
 	Token                    string `json:"token"`
 	Expiresat                string `json:"expires_at"`
+	Id                       string `json:"id"`
+	Message                  string `json:"message"`
 }
 
 var apiEndpoint string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
 
 func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
-	// get json response from credentials api
+	// Call the digitalocean credentials api
 	body, err := credentialsApi(clusterId, accessToken)
 	if err != nil {
 		return false, err
 	}
 
-	// unmarshal response
+	// Unmarshal the the raw json response into a credentialsApiResponse
 	resp, err := unmarshalCredentialsApiResponse(body)
 	if err != nil {
 		return false, err
 	}
 
-	// decode cert
+	// Handle non-OK responses
+	// The digitalocean credentials api will return a non empty string for 'Id' and 'Message' in the case of a non 2XX response
+	if resp.Id != "" {
+		msg := fmt.Sprintf(
+			"digitalocean credentials api response was not 'OK': (%s) %s",
+			resp.Id,
+			resp.Message,
+		)
+		return false, errors.New(msg)
+	}
+
+	// Decode the base64-encoded cert
 	cert, err := decodeCert(resp.CertificateAuthorityData)
 	if err != nil {
 		return false, err
 	}
 
-	// update cert
+	// Update the TLS client config in the rest config with the custom cert
 	client.TLSClientConfig.CAData = cert
 
 	return true, nil
@@ -55,10 +68,6 @@ func credentialsApi(clusterId string, accessToken string) ([]byte, error) {
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		msg := fmt.Sprintf("failed to call digitalocean credentials api: %s", err)
-		return []byte{}, errors.New(msg)
-	}
-	if resp.StatusCode != http.StatusOK {
-		msg := fmt.Sprintf("digitalocean credentials api responded with non-2XX HTTP status %d", resp.StatusCode)
 		return []byte{}, errors.New(msg)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
