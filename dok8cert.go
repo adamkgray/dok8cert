@@ -26,12 +26,13 @@ type networkClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-var apiEndpoint string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
+var apiEndpointFmt string = "https://api.digitalocean.com/v2/kubernetes/clusters/%s/credentials"
 
-var httpClient *http.Client = &http.Client{}
+func Update(clusterId string, accessToken string, k8sClient *rest.Config) (bool, error) {
+	return update(clusterId, accessToken, k8sClient, &http.Client{})
+}
 
-func Update(clusterId string, accessToken string, client *rest.Config) (bool, error) {
-
+func update(clusterId string, accessToken string, k8sClient *rest.Config, httpClient networkClient) (bool, error) {
 	// Call the digitalocean credentials api
 	body, err := credentialsApi(httpClient, clusterId, accessToken)
 	if err != nil {
@@ -57,13 +58,13 @@ func Update(clusterId string, accessToken string, client *rest.Config) (bool, er
 	}
 
 	// Update the TLS client config in the rest config with the custom cert
-	client.TLSClientConfig.CAData = cert
+	k8sClient.TLSClientConfig.CAData = cert
 
 	return true, nil
 }
 
 func credentialsApi(client networkClient, clusterId string, accessToken string) ([]byte, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf(apiEndpoint, clusterId), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(apiEndpointFmt, clusterId), nil)
 	if err != nil {
 		msg := fmt.Sprintf("failed to instantiate new request: %s", err)
 		return []byte{}, errors.New(msg)
