@@ -1,5 +1,8 @@
 # dok8cert
 
+![pipeline](https://github.com/adamkgray/dok8cert/actions/workflows/go.yml/badge.svg)
+
+
 Update the go kubernetes client with the custom DigitalOcean TLS certificate
 
 ## About
